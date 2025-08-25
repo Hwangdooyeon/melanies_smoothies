@@ -3,6 +3,10 @@ import streamlit as st
 from snowflake.snowpark.functions import col
 
 
-st.title("🍓 스무디 주문 앱")
-st.write("안녕하세요! 스트림릿 앱이 성공적으로 실행되었습니다.")        
-    
+streamlit.title = (My Parents New Healthy Diner)
+st.header("Breakfast Menu")
+
+# 메뉴 항목
+st.text("Omega 3 & Blueberry Oatmeal")
+st.text("Kale, Spinach & Rocket Smoothie")
+st.text("Hard-Boiled Free-Range Egg")
