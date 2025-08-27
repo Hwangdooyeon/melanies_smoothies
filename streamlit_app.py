@@ -1,5 +1,6 @@
 
-# Import python packages
+# Import python package
+import requests
 import streamlit as st
 from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
@@ -48,7 +49,7 @@ if ingredients_List:
 
     # 🍉 Watermelon API 데이터 요청 및 출력
 
-import requests
+
 smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
 sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
 
