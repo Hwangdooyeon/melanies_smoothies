@@ -14,9 +14,8 @@ title = st.text_input("Name on Smoothie: ")
 name_on_order = title
 st.write("Choose the fruits you want in your custom Smoothie", title)
 
-
-conn = st.connection("snowflake")  # 🔐 secrets.toml에서 연결 설정
-session = get_active_session()
+conn = st.connection("snowflake")
+session = conn.session()  # 이걸로만 세션 생성
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('fruit_name'))
 # st.dataframe(data=my_dataframe, use_container_width=True)
 
