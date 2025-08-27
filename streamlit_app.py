@@ -1,6 +1,6 @@
 # Import python packages
 import streamlit as st
-from snowflake.snowpark.context import get_active_session
+from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col
 # Write directly to the app
 st.write(
@@ -13,8 +13,7 @@ title = st.text_input("Name on Smoothie: ")
 name_on_order = title
 st.write("Choose the fruits you want in your custom Smoothie", title)
 
-
-session = get_active_session()
+ session = Session.builder.configs(st.secrets["connections.snowflake"]).create()
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('fruit_name'))
 # st.dataframe(data=my_dataframe, use_container_width=True)
 
