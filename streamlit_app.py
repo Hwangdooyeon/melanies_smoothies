@@ -3,7 +3,7 @@ import streamlit as st
 from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
 # Write directly to the app
-st.title(f"과일 선택해보기")
+st.title("과일 선택해보기")
 st.write(
   """wiz-con
   """
