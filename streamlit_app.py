@@ -16,7 +16,7 @@ st.write("Choose the fruits you want in your custom Smoothie", title)
 
 
 conn = st.connection("snowflake")  # 🔐 secrets.toml에서 연결 설정
-session = conn.session()
+session = get_active_session()
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('fruit_name'))
 # st.dataframe(data=my_dataframe, use_container_width=True)
 
