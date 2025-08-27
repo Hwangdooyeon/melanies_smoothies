@@ -13,7 +13,7 @@ title = st.text_input("Name on Smoothie: ")
 name_on_order = title
 st.write("Choose the fruits you want in your custom Smoothie", title)
 
- session = Session.builder.configs(st.secrets["connections.snowflake"]).create()
+session = Session.builder.configs(st.secrets["connections.snowflake"]).create()
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('fruit_name'))
 # st.dataframe(data=my_dataframe, use_container_width=True)
 
