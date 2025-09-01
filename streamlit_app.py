@@ -1,71 +1,69 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
-import pandas as pd
-import requests
 import json
-from datetime import datetime
+import urllib.request
+import pandas as pd
 
-# 네이버 API 인증 정보
-CLIENT_ID = "q3Yd8CQkM7oHlqOzMeQL"
-CLIENT_SECRET = "hGWoNfAcAD"
+# ✅ 1. 네이버 API 정보
+client_id = "q3Yd8CQkM7oHlqOzMeQL"
+client_secret = "hGWoNfAcAD"
 
-# 검색어 트렌드 요청 함수
-def get_trend_data(keyword, start_date, end_date, time_unit="date"):
-    url = "https://openapi.naver.com/v1/datalab/search"
+# ✅ 2. 검색 요청 정보
+url = "https://openapi.naver.com/v1/datalab/search"
+body = {
+    "startDate": "2025-08-01",
+    "endDate": "2025-08-31",
+    "timeUnit": "date",
+    "keywordGroups": [
+        {
+            "groupName": "나이키운동화",
+            "keywords": ["나이키운동화"]
+        }
+    ],
+    "device": "pc",
+    "ages": [],
+    "gender": ""
+}
+body_str = json.dumps(body)
 
-    headers = {
-        "X-Naver-Client-Id": CLIENT_ID,
-        "X-Naver-Client-Secret": CLIENT_SECRET,
-        "Content-Type": "application/json"
-    }
+# ✅ 3. API 호출 (urllib.request 사용)
+req = urllib.request.Request(url)
+req.add_header("X-Naver-Client-Id", client_id)
+req.add_header("X-Naver-Client-Secret", client_secret)
+req.add_header("Content-Type", "application/json")
 
-    body = {
-        "startDate": start_date,
-        "endDate": end_date,
-        "timeUnit": "date",  # "date" = daily
-        "keywordGroups": [
-            {
-                "groupName": keyword,
-                "keywords": [keyword]
-            }
-        ],
-        "device": "pc",  # 또는 "all"
-        "ages": [],
-        "gender": ""
-    }
+try:
+    response = urllib.request.urlopen(req, data=body_str.encode("utf-8"))
+    rescode = response.getcode()
 
-    response = requests.post(url, headers=headers, data=json.dumps(body))
-    if response.status_code == 200:
-        return response.json()
+    if rescode == 200:
+        response_body = response.read()
+        result = json.loads(response_body.decode('utf-8'))
     else:
-        st.error(f"API 호출 실패: {response.status_code}")
-        st.text(response.text)
-        return None
+        st.error(f"Error Code: {rescode}")
+        st.stop()
 
-# 날짜 변환
-def format_trend_response(result):
-    dates = []
-    ratios = []
+except Exception as e:
+    st.error("API 호출 실패")
+    st.text(str(e))
+    st.stop()
 
-    for entry in result['results'][0]['data']:
-        dates.append(entry['period'])
-        ratios.append(entry['ratio'])
+# ✅ 4. 결과 처리
+dates = []
+ratios = []
 
-    df = pd.DataFrame({'날짜': dates, '검색량 지수': ratios})
-    return df
+for entry in result['results'][0]['data']:
+    dates.append(entry['period'])
+    ratios.append(entry['ratio'])
 
-# Streamlit 시작
-st.title("📊 네이버 검색어 트렌드")
+df = pd.DataFrame({'날짜': pd.to_datetime(dates), '검색량 지수': ratios})
+df = df.set_index('날짜')
 
-# 기본 검색어 및 날짜
-keyword = "나이키운동화"
-start_date = "2025-08-01"
-end_date = "2025-08-31"
+# ✅ 5. Streamlit 시각화
+st.title("📊 나이키운동화 - 네이버 검색 트렌드 (2025년 8월)")
 
-st.write(f"🔍 검색어: `{keyword}` (기간: {start_date} ~ {end_date})")
+st.subheader("🔎 일자별 검색량 지수")
+st.dataframe(df, use_container_width=True)
 
-# API 호출
-trend_data = get_trend_data(keyword, start_date, end_date)
-
-if trend_data:
-    df = format_trend_response(trend_data)
-    st.dataframe(df, use_container_width=True)
+st.subheader("📈 꺾은선 그래프")
+st.line_chart(df)
