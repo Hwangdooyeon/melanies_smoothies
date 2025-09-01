@@ -1,52 +1,71 @@
-
-# Import python package
-import requests
 import streamlit as st
-from snowflake.snowpark.context import get_active_session
-from snowflake.snowpark.functions import col
-# Write directly to the app
-st.write(
-  """wiz-con
-  """
-)
+import pandas as pd
+import requests
+import json
+from datetime import datetime
 
+# 네이버 API 인증 정보
+CLIENT_ID = "q3Yd8CQkM7oHlqOzMeQL"
+CLIENT_SECRET = "hGWoNfAcAD"
 
-title = st.text_input("Name on Smoothie: ")
-name_on_order = title
-st.write("Choose the fruits you want in your custom Smoothie", title)
+# 검색어 트렌드 요청 함수
+def get_trend_data(keyword, start_date, end_date, time_unit="date"):
+    url = "https://openapi.naver.com/v1/datalab/search"
 
-conn = st.connection("snowflake")
-session = conn.session()  # 이걸로만 세션 생성
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('fruit_name'))
-# st.dataframe(data=my_dataframe, use_container_width=True)
+    headers = {
+        "X-Naver-Client-Id": CLIENT_ID,
+        "X-Naver-Client-Secret": CLIENT_SECRET,
+        "Content-Type": "application/json"
+    }
 
-ingredients_List = st.multiselect(
-    'choose up to 5 ingredients:'
-    ,my_dataframe
-)
+    body = {
+        "startDate": start_date,
+        "endDate": end_date,
+        "timeUnit": "date",  # "date" = daily
+        "keywordGroups": [
+            {
+                "groupName": keyword,
+                "keywords": [keyword]
+            }
+        ],
+        "device": "pc",  # 또는 "all"
+        "ages": [],
+        "gender": ""
+    }
 
-if ingredients_List:
-    ingredients_string = ''
+    response = requests.post(url, headers=headers, data=json.dumps(body))
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"API 호출 실패: {response.status_code}")
+        st.text(response.text)
+        return None
 
-    for fruit_chosen in ingredients_List:
-        ingredients_string += fruit_chosen + ' '
-        st.subheader(fruit_chosen + ' Nutrition Information')
-        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + fruit_chosen)
-        sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+# 날짜 변환
+def format_trend_response(result):
+    dates = []
+    ratios = []
 
+    for entry in result['results'][0]['data']:
+        dates.append(entry['period'])
+        ratios.append(entry['ratio'])
 
-    # st.write(ingredients_string)
+    df = pd.DataFrame({'날짜': dates, '검색량 지수': ratios})
+    return df
 
+# Streamlit 시작
+st.title("📊 네이버 검색어 트렌드")
 
-    my_insert_stmt = """ insert into smoothies.public.orders(ingredients, name_on_order)
-            values ('""" + ingredients_string + """' , '""" + name_on_order + """')"""
+# 기본 검색어 및 날짜
+keyword = "나이키운동화"
+start_date = "2025-08-01"
+end_date = "2025-08-31"
 
-    # st.write(my_insert_stmt)
-    time_to_insert = st.button('Submit Order')
-   
-    if time_to_insert:
-        session.sql(my_insert_stmt).collect()
-        
-        st.success('Your Smoothie is ordered!', icon="✅")
+st.write(f"🔍 검색어: `{keyword}` (기간: {start_date} ~ {end_date})")
 
+# API 호출
+trend_data = get_trend_data(keyword, start_date, end_date)
 
+if trend_data:
+    df = format_trend_response(trend_data)
+    st.dataframe(df, use_container_width=True)
