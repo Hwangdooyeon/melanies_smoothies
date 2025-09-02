@@ -1,43 +1,69 @@
-# Import python packages
+# -*- coding: utf-8 -*-
 import streamlit as st
-import snowflake.connector
+import json
+import urllib.request
+import pandas as pd
 
-# Write directly to the app
-st.title(f"Example Streamlit App :balloon: {st.__version__}")
-st.write(
-  """Replace this example with your own code!
-  **And if you're new to Streamlit,** check
-  out our easy-to-follow guides at
-  [docs.streamlit.io](https://docs.streamlit.io).
-  """
-)
-cnx = st.connection("snowflake")
-session = cnx.session()
+# ✅ 1. 네이버 API 정보
+client_id = "q3Yd8CQkM7oHlqOzMeQL"
+client_secret = "hGWoNfAcAD"
 
-# Use an interactive slider to get user input
-hifives_val = st.slider(
-  "Number of high-fives in Q3",
-  min_value=0,
-  max_value=90,
-  value=60,
-  help="Use this to enter the number of high-fives you gave in Q3",
-)
+# ✅ 2. 검색 요청 정보
+url = "https://openapi.naver.com/v1/datalab/search"
+body = {
+    "startDate": "2025-08-01",
+    "endDate": "2025-08-31",
+    "timeUnit": "date",
+    "keywordGroups": [
+        {
+            "groupName": "나이키운동화",
+            "keywords": ["나이키운동화"]
+        }
+    ],
+    "device": "pc",
+    "ages": [],
+    "gender": ""
+}
+body_str = json.dumps(body)
 
-#  Create an example dataframe
-#  Note: this is just some dummy data, but you can easily connect to your Snowflake data
-#  It is also possible to query data using raw SQL using session.sql() e.g. session.sql("select * from table")
-created_dataframe = session.create_dataframe(
-  [[50, 25, "Q1"], [20, 35, "Q2"], [hifives_val, 30, "Q3"]],
-  schema=["HIGH_FIVES", "FIST_BUMPS", "QUARTER"],
-)
+# ✅ 3. API 호출 (urllib.request 사용)
+req = urllib.request.Request(url)
+req.add_header("X-Naver-Client-Id", client_id)
+req.add_header("X-Naver-Client-Secret", client_secret)
+req.add_header("Content-Type", "application/json")
 
-# Execute the query and convert it into a Pandas dataframe
-queried_data = created_dataframe.to_pandas()
+try:
+    response = urllib.request.urlopen(req, data=body_str.encode("utf-8"))
+    rescode = response.getcode()
 
-# Create a simple bar chart
-# See docs.streamlit.io for more types of charts
-st.subheader("Number of high-fives")
-st.bar_chart(data=queried_data, x="QUARTER", y="HIGH_FIVES")
+    if rescode == 200:
+        response_body = response.read()
+        result = json.loads(response_body.decode('utf-8'))
+    else:
+        st.error(f"Error Code: {rescode}")
+        st.stop()
 
-st.subheader("Underlying data")
-st.dataframe(queried_data, use_container_width=True)
+except Exception as e:
+    st.error("API 호출 실패")
+    st.text(str(e))
+    st.stop()
+
+# ✅ 4. 결과 처리
+dates = []
+ratios = []
+
+for entry in result['results'][0]['data']:
+    dates.append(entry['period'])
+    ratios.append(entry['ratio'])
+
+df = pd.DataFrame({'날짜': pd.to_datetime(dates), '검색량 지수': ratios})
+df = df.set_index('날짜')
+
+# ✅ 5. Streamlit 시각화
+st.title("📊 나이키운동화 - 네이버 검색 트렌드 (2025년 8월)")
+
+st.subheader("🔎 일자별 검색량 지수")
+st.dataframe(df, use_container_width=True)
+
+st.subheader("📈 꺾은선 그래프")
+st.line_chart(df)
